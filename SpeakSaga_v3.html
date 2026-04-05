@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SpeakSaga v3</title>
+<style>
+body{margin:0;font-family:Arial;background:#0f172a;color:#fff;text-align:center}
+.screen{display:none;padding:16px;max-width:420px;margin:auto}
+.screen.active{display:block}
+button{width:100%;margin-top:16px;padding:14px;border:none;border-radius:30px;background:linear-gradient(135deg,#f9d423,#ff6b35);color:#fff;font-weight:bold}
+.map{position:relative;height:180px;border-radius:16px;background-size:cover;margin-top:10px}
+.char{position:absolute;bottom:20px;width:60px;height:80px;background-size:contain;background-repeat:no-repeat;transition:left .5s}
+.castle{position:absolute;right:8px;bottom:18px;font-size:28px}
+.word{font-size:2rem;margin-top:14px}
+.xpbar{height:10px;background:#333;border-radius:10px;margin-top:10px}
+.fill{height:100%;width:0;background:#22c55e;border-radius:10px}
+@keyframes jump{0%{transform:translateY(0)}50%{transform:translateY(-12px)}100%{transform:translateY(0)}}
+.success{animation:jump .4s}
+.confetti{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;background-image:radial-gradient(circle,yellow 2px,transparent 2px);background-size:20px 20px;animation:fade .6s forwards}
+@keyframes fade{from{opacity:1}to{opacity:0}}
+</style>
+</head>
+<body>
+
+<div id="landing" class="screen active">
+<h2>SpeakSaga 🏰</h2>
+<button onclick="startGame()">Start Adventure</button>
+</div>
+
+<div id="game" class="screen">
+<div class="xpbar"><div id="xpfill" class="fill"></div></div>
+<div id="map" class="map">
+<div id="char" class="char"></div>
+<div class="castle">🏰</div>
+</div>
+<div class="word" id="word"></div>
+<button onclick="speakWord()">🔊 Hear</button>
+<button onclick="listen()">🎤 Speak</button>
+<div id="feedback"></div>
+</div>
+
+<div id="victory" class="screen">
+<h1>🏆 Speak Hero!</h1>
+<p>You completed your adventure!</p>
+<div id="stats"></div>
+<button onclick="playAgain()">🔁 Play Again</button>
+</div>
+
+<script>
+let level=0,xp=0,position=0,coins=0,streak=0,bestStreak=0,currentWord='',problemWords={};
+const worlds=[
+{name:'Fantasy',map:'assets/maps/fantasy.png'},
+{name:'Candy',map:'assets/maps/candy.png'},
+{name:'Forest',map:'assets/maps/forest.png'},
+{name:'Ice',map:'assets/maps/ice.png'},
+{name:'Space',map:'assets/maps/space.png'}
+];
+const words=["Cat","Dog","Ball","Apple","Tiger","Elephant"];
+
+function startGame(){
+document.getElementById('landing').classList.remove('active');
+document.getElementById('game').classList.add('active');
+loadWorld();nextWord();
+}
+function loadWorld(){
+const world=worlds[level];
+document.getElementById('map').style.backgroundImage=`url(${world.map})`;
+document.getElementById('char').style.left='10px';position=0;
+}
+function nextWord(){
+let pool=words;
+if(Math.random()<0.3 && Object.keys(problemWords).length){pool=Object.keys(problemWords);}
+currentWord=pool[Math.floor(Math.random()*pool.length)];
+document.getElementById('word').innerText=currentWord;
+}
+function speakWord(){speechSynthesis.speak(new SpeechSynthesisUtterance(currentWord));}
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=SR?new SR():null;if(rec) rec.lang='en-US';
+function listen(){
+if(!rec)return alert('No speech support');
+rec.start();
+rec.onresult=e=>{
+const spoken=e.results[0][0].transcript.toLowerCase();
+const score=similarity(spoken,currentWord.toLowerCase());
+if(score>70){success()} else mistake();
+}
+}
+function similarity(a,b){let m=0;for(let i=0;i<Math.min(a.length,b.length);i++){if(a[i]===b[i])m++;}return m/Math.max(a.length,b.length)*100;}
+function success(){
+xp+=10;coins+=5;position++;streak++;bestStreak=Math.max(bestStreak,streak);
+document.getElementById('char').classList.add('success');
+setTimeout(()=>document.getElementById('char').classList.remove('success'),400);
+document.body.appendChild(confetti());
+document.getElementById('char').style.left=(10+position*50)+'px';
+document.getElementById('xpfill').style.width=(xp%100)+'%';
+document.getElementById('feedback').innerText="🎉 Awesome!";
+if(position>=5){levelUp();} else {setTimeout(nextWord,800);}
+}
+function mistake(){streak=0;problemWords[currentWord]=true;document.getElementById('feedback').innerText="Try again 😊";}
+function levelUp(){
+level++;
+if(level>=worlds.length){showVictory();return;}
+document.getElementById('feedback').innerText="🌍 New World!";
+setTimeout(()=>{loadWorld();nextWord();},1200);
+}
+function showVictory(){
+document.getElementById('game').classList.remove('active');
+document.getElementById('victory').classList.add('active');
+document.getElementById('stats').innerHTML=`⭐ Coins: ${coins} | 🔥 Best Streak: ${bestStreak}`;
+document.body.appendChild(confetti());
+speechSynthesis.speak(new SpeechSynthesisUtterance("You are a Speak Hero!"));
+}
+function playAgain(){location.reload();}
+function confetti(){const el=document.createElement('div');el.className='confetti';setTimeout(()=>el.remove(),600);return el;}
+</script>
+
+</body>
+</html>

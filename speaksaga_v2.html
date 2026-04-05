@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SpeakSaga</title>
+<style>
+/* ============================================================
+   IMAGE SLOTS — replace these 8 URLs with your real images
+   MAP_1 through MAP_6 = the 6 world backgrounds
+   CHAR_BOY = knight boy character (PNG with transparent bg)
+   CHAR_GIRL = wizard girl character (PNG with transparent bg)
+   ============================================================ */
+:root {
+  --MAP_1: url('https://placehold.co/600x300/2d6a4f/white?text=Fantasy+Map');
+  --MAP_2: url('https://placehold.co/600x300/0077b6/white?text=Tropical+Map');
+  --MAP_3: url('https://placehold.co/600x300/e63946/white?text=Candy+Map');
+  --MAP_4: url('https://placehold.co/600x300/3d405b/white?text=Forest+Map');
+  --MAP_5: url('https://placehold.co/600x300/03045e/white?text=Space+Map');
+  --MAP_6: url('https://placehold.co/600x300/90e0ef/333?text=Ice+Map');
+  --CHAR_BOY: url('https://placehold.co/60x80/4a90d9/white?text=BOY');
+  --CHAR_GIRL: url('https://placehold.co/60x80/9c27b0/white?text=GIRL');
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#1a1a2e;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:12px}
+.screen{width:100%;max-width:500px;display:none;flex-direction:column;gap:12px;padding-top:10px}
+.screen.active{display:flex}
+.card{background:rgba(255,255,255,.97);border-radius:20px;padding:18px;box-shadow:0 4px 20px rgba(0,0,0,.25)}
+
+/* LANDING */
+#s-landing{align-items:center;text-align:center}
+#s-landing h1{font-size:2.4rem;font-weight:900;background:linear-gradient(135deg,#f9d423,#ff6b35);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.tagline{color:#a0aec0;font-size:.95rem;margin:6px 0 14px}
+.badge-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:8px 0}
+.badge{background:rgba(255,255,255,.1);color:#e2e8f0;border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600}
+
+/* CHARACTER SELECT */
+.char-select{display:flex;gap:16px;justify-content:center;margin:12px 0}
+.char-opt{cursor:pointer;border-radius:16px;padding:12px;border:3px solid transparent;transition:all .2s;background:rgba(255,255,255,.05);text-align:center;min-width:110px}
+.char-opt:hover{background:rgba(255,255,255,.1)}
+.char-opt.selected{border-color:#f9d423;background:rgba(249,212,35,.1)}
+.char-opt p{font-size:12px;color:#e2e8f0;margin-top:8px;font-weight:600}
+.char-img{width:70px;height:90px;background-size:contain;background-repeat:no-repeat;background-position:center bottom;margin:0 auto}
+.char-img.boy{background-image:var(--CHAR_BOY)}
+.char-img.girl{background-image:var(--CHAR_GIRL)}
+.btn-start{background:linear-gradient(135deg,#f9d423,#ff6b35);color:white;border:none;padding:14px 40px;border-radius:99px;font-size:1.1rem;cursor:pointer;font-weight:800;width:100%;margin-top:8px;box-shadow:0 4px 20px rgba(255,107,53,.4)}
+
+/* DAILY BAR */
+.daily-bar{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:12px 18px;display:flex;justify-content:space-between;color:white}
+.daily-bar .lbl{font-size:10px;opacity:.6;text-transform:uppercase;letter-spacing:.06em}
+.daily-bar .val{font-size:1rem;font-weight:700}
+
+/* LEVEL GRID */
+.level-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.lv-card{border-radius:16px;overflow:hidden;cursor:pointer;border:3px solid transparent;transition:all .2s;position:relative}
+.lv-card:hover:not(.locked){transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.lv-card.locked{opacity:.45;cursor:not-allowed;filter:grayscale(.6)}
+.lv-card.completed{border-color:#22c55e}
+.lv-thumb{height:80px;background-size:cover;background-position:center;position:relative}
+.lv-thumb::after{content:'';position:absolute;inset:0;background:linear-gradient(transparent 30%,rgba(0,0,0,.65))}
+.lv-thumb-1{background-image:var(--MAP_1)}
+.lv-thumb-2{background-image:var(--MAP_2)}
+.lv-thumb-3{background-image:var(--MAP_3)}
+.lv-thumb-4{background-image:var(--MAP_4)}
+.lv-thumb-5{background-image:var(--MAP_5)}
+.lv-thumb-6{background-image:var(--MAP_6)}
+.lv-emoji{position:absolute;bottom:8px;left:10px;font-size:1.4rem;z-index:2}
+.lock-badge{position:absolute;top:6px;right:8px;font-size:18px;z-index:2}
+.done-badge{position:absolute;top:6px;left:8px;background:#22c55e;color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;z-index:2}
+.lv-info{padding:8px 10px;background:white}
+.lv-info h3{font-size:.85rem;font-weight:700;color:#1a1a2e}
+.lv-info p{font-size:10px;color:#6b7280;margin-top:1px}
+.lv-info .prog{font-size:10px;font-weight:700;color:#4f46e5;margin-top:3px}
+
+/* GAME HUD */
+.hud{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.hud-pill{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:99px;padding:6px 14px;font-size:13px;font-weight:700;color:white}
+.prog-bar{background:rgba(255,255,255,.15);border-radius:99px;height:8px;overflow:hidden}
+.prog-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#f9d423,#ff6b35);transition:width .5s ease}
+
+/* GAME MAP */
+.game-map{position:relative;height:160px;border-radius:18px;overflow:hidden;background-size:cover;background-position:center}
+.game-map-1{background-image:var(--MAP_1)}
+.game-map-2{background-image:var(--MAP_2)}
+.game-map-3{background-image:var(--MAP_3)}
+.game-map-4{background-image:var(--MAP_4)}
+.game-map-5{background-image:var(--MAP_5)}
+.game-map-6{background-image:var(--MAP_6)}
+.map-overlay{position:absolute;inset:0;background:rgba(0,0,0,.15)}
+
+/* PATH & WAYPOINTS */
+.map-path{position:absolute;bottom:36px;left:54px;right:60px;height:7px;border-radius:4px;background:rgba(255,255,255,.4);box-shadow:0 2px 0 rgba(255,255,255,.2)}
+.map-path-dashes{position:absolute;bottom:38px;left:54px;right:60px;height:3px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.7) 0 8px,transparent 8px 16px);border-radius:2px}
+.waypoint{position:absolute;bottom:32px;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.7);border:2px solid white;box-shadow:0 0 6px rgba(0,0,0,.3)}
+.wp-final{bottom:30px;right:54px;width:14px;height:14px;background:#FFD700;border-radius:50%;border:2px solid white;position:absolute;animation:wpPulse 1.5s ease-in-out infinite}
+@keyframes wpPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,215,0,.7)}50%{box-shadow:0 0 0 8px rgba(255,215,0,0)}}
+.map-dest{position:absolute;right:10px;bottom:30px;font-size:26px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
+
+/* CHARACTER ON MAP */
+.char-walker{position:absolute;bottom:36px;width:40px;height:52px;background-size:contain;background-repeat:no-repeat;background-position:center bottom;transition:left .7s cubic-bezier(.34,1.56,.64,1);animation:walkerBob .5s ease-in-out infinite;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4))}
+.char-walker.boy{background-image:var(--CHAR_BOY)}
+.char-walker.girl{background-image:var(--CHAR_GIRL)}
+@keyframes walkerBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+
+/* WORD CARD */
+.word-card{text-align:center;padding:22px 18px 18px}
+.word-emoji{font-size:2.8rem;display:block;margin-bottom:6px}
+.word-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#9ca3af;margin-bottom:5px}
+.word-text{font-size:2.6rem;font-weight:900;color:#1a1a2e;line-height:1}
+.word-hint{font-size:13px;color:#9ca3af;margin-top:4px;min-height:18px}
+.attempt-row{display:flex;gap:8px;justify-content:center;margin-top:10px}
+.dot{width:11px;height:11px;border-radius:50%;background:#e5e7eb;transition:background .2s}
+.dot.ok{background:#22c55e}.dot.fail{background:#f87171}
+
+/* CONTROLS */
+.controls{display:flex;flex-direction:column;align-items:center;gap:10px}
+.feedback{font-size:1.05rem;font-weight:700;min-height:26px;color:#059669;text-align:center}
+.feedback.wrong{color:#dc2626}
+.result-txt{font-size:12px;color:#9ca3af;min-height:16px}
+.btn-speak{background:linear-gradient(135deg,#22c55e,#16a34a);color:white;border:none;padding:14px 44px;border-radius:99px;font-size:1.1rem;cursor:pointer;font-weight:800;box-shadow:0 4px 16px rgba(34,197,94,.4);transition:all .15s}
+.btn-speak:hover{transform:translateY(-1px)}
+.btn-speak.listening{background:linear-gradient(135deg,#ef4444,#dc2626);animation:speakPulse 1.2s infinite}
+.btn-speak:disabled{opacity:.6;cursor:not-allowed}
+@keyframes speakPulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.5)}60%{box-shadow:0 0 0 12px rgba(239,68,68,0)}}
+.btn-skip{background:none;border:1.5px solid rgba(255,255,255,.2);color:rgba(255,255,255,.6);padding:8px 22px;border-radius:99px;font-size:12px;cursor:pointer}
+.no-mic{background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:12px;font-size:12px;color:#9a3412;text-align:center}
+
+/* LESSON COMPLETE */
+#s-complete{align-items:center}
+#s-complete h2{font-size:1.6rem;font-weight:900;color:white;text-align:center}
+.stars-big{font-size:2.2rem;letter-spacing:6px;margin:4px 0 12px}
+.stat-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;width:100%}
+.stat-box{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:14px 8px;text-align:center}
+.stat-box .sv{font-size:1.4rem;font-weight:800;color:#f9d423}
+.stat-box .sl{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px}
+.review{width:100%;background:rgba(255,255,255,.05);border-radius:16px;padding:14px}
+.review h4{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.4);margin-bottom:8px}
+.review-item{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.07);font-size:14px;color:white;font-weight:500}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+.btn-primary{background:linear-gradient(135deg,#f9d423,#ff6b35);color:white;border:none;padding:12px 28px;border-radius:99px;font-size:.95rem;cursor:pointer;font-weight:700}
+.btn-ghost{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:white;padding:10px 22px;border-radius:99px;font-size:13px;cursor:pointer}
+
+/* DAILY DONE */
+#s-done{align-items:center;text-align:center}
+#s-done h2{font-size:1.6rem;font-weight:900;color:white}
+.streak-pill{background:linear-gradient(135deg,#f9d423,#ff6b35);color:white;border-radius:99px;padding:10px 28px;font-size:1rem;font-weight:800;margin:10px 0}
+.tomorrow-box{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px;width:100%;text-align:left}
+.tomorrow-box h4{font-size:11px;color:#86efac;font-weight:700;margin-bottom:3px}
+.tomorrow-box p{font-size:13px;color:rgba(255,255,255,.6)}
+
+/* TOAST */
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-70px);background:linear-gradient(135deg,#f9d423,#ff6b35);color:white;padding:10px 22px;border-radius:99px;font-size:13px;font-weight:700;transition:transform .3s ease;z-index:9999;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+
+<!-- LANDING -->
+<div class="screen active" id="s-landing">
+  <div style="text-align:center;padding:20px 0 10px">
+    <div style="font-size:3rem;margin-bottom:8px">🏰</div>
+    <h1>SpeakSaga</h1>
+    <p class="tagline">Speak words. Earn stars. Build your saga.</p>
+    <div class="badge-row">
+      <span class="badge">📅 5 lessons/day</span>
+      <span class="badge">📝 10 words each</span>
+      <span class="badge">⭐ 3-star rating</span>
+      <span class="badge">🔒 6 worlds</span>
+    </div>
+  </div>
+  <div class="card">
+    <p style="font-size:14px;font-weight:700;color:#374151;margin-bottom:10px;text-align:center">Choose your hero</p>
+    <div class="char-select">
+      <div class="char-opt selected" id="opt-boy" onclick="selectChar('boy')">
+        <div class="char-img boy"></div>
+        <p>Knight</p>
+      </div>
+      <div class="char-opt" id="opt-girl" onclick="selectChar('girl')">
+        <div class="char-img girl"></div>
+        <p>Wizard</p>
+      </div>
+    </div>
+    <button class="btn-start" onclick="goLevels()">Begin Adventure →</button>
+  </div>
+</div>
+
+<!-- LEVELS -->
+<div class="screen" id="s-levels">
+  <div class="daily-bar">
+    <div><div class="lbl">Today</div><div class="val" id="daily-count">0 / 5 done</div></div>
+    <div style="text-align:right"><div class="lbl">Streak</div><div class="val" id="streak-lbl">🔥 0 days</div></div>
+  </div>
+  <div class="card" style="padding:14px">
+    <p style="font-size:12px;color:#6b7280;margin-bottom:12px">Complete 5 lessons daily to keep your streak!</p>
+    <div class="level-grid" id="level-grid"></div>
+  </div>
+  <button class="btn-ghost" onclick="showScreen('s-landing')">← Change Hero</button>
+</div>
+
+<!-- GAME -->
+<div class="screen" id="s-game">
+  <div class="hud">
+    <div class="hud-pill" id="g-word">1/10</div>
+    <div class="hud-pill" id="g-xp">⭐ 0 XP</div>
+    <div class="hud-pill" id="g-level">World 1</div>
+  </div>
+  <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+
+  <div class="game-map" id="game-map">
+    <div class="map-overlay"></div>
+    <div class="map-path"></div>
+    <div class="map-path-dashes"></div>
+    <div class="waypoint" style="left:22%"></div>
+    <div class="waypoint" style="left:40%"></div>
+    <div class="waypoint" style="left:58%"></div>
+    <div class="waypoint" style="left:76%"></div>
+    <div class="wp-final"></div>
+    <div class="map-dest" id="map-dest">🏰</div>
+    <div class="char-walker boy" id="char-walker" style="left:30px"></div>
+  </div>
+
+  <div class="card word-card">
+    <span class="word-emoji" id="word-emoji">🍎</span>
+    <div class="word-lbl">Say this word</div>
+    <div class="word-text" id="word-text">Apple</div>
+    <div class="word-hint" id="word-hint">ap·ple</div>
+    <div class="attempt-row">
+      <div class="dot" id="dot1"></div>
+      <div class="dot" id="dot2"></div>
+      <div class="dot" id="dot3"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="feedback" id="feedback"></div>
+    <div class="result-txt" id="result-txt"></div>
+    <div id="mic-area">
+      <button class="btn-speak" id="btn-speak" onclick="listen()">🎤 Speak</button>
+    </div>
+    <button class="btn-skip" onclick="skipWord()">Skip this word</button>
+  </div>
+</div>
+
+<!-- COMPLETE -->
+<div class="screen" id="s-complete">
+  <div style="font-size:2.5rem;text-align:center">🎉</div>
+  <h2>Lesson Complete!</h2>
+  <div class="stars-big" id="stars-big">⭐⭐⭐</div>
+  <div class="stat-row">
+    <div class="stat-box"><div class="sv" id="c-correct">0</div><div class="sl">Correct</div></div>
+    <div class="stat-box"><div class="sv" id="c-xp">+0</div><div class="sl">XP earned</div></div>
+    <div class="stat-box"><div class="sv" id="c-today">0/5</div><div class="sl">Today</div></div>
+  </div>
+  <div class="review" id="review"></div>
+  <div class="btn-row">
+    <button class="btn-primary" onclick="goLevels()">More Lessons →</button>
+    <button class="btn-ghost" onclick="replayLesson()">🔁 Replay</button>
+  </div>
+</div>
+
+<!-- DAILY DONE -->
+<div class="screen" id="s-done">
+  <div style="font-size:3.5rem;text-align:center">🌟</div>
+  <h2>Daily Goal Complete!</h2>
+  <p style="color:rgba(255,255,255,.6);font-size:.9rem">You finished all 5 lessons. Amazing!</p>
+  <div class="streak-pill" id="streak-pill">🔥 1-Day Streak!</div>
+  <div class="stat-row">
+    <div class="stat-box"><div class="sv" id="dd-words">0</div><div class="sl">Words</div></div>
+    <div class="stat-box"><div class="sv" id="dd-xp">0</div><div class="sl">XP</div></div>
+    <div class="stat-box"><div class="sv" id="dd-stars">0</div><div class="sl">Stars</div></div>
+  </div>
+  <div class="tomorrow-box">
+    <h4>Come back tomorrow →</h4>
+    <p id="tomorrow-text">Keep your streak going!</p>
+  </div>
+  <button class="btn-ghost" style="margin-top:8px" onclick="goLevels()">← View Worlds</button>
+</div>
+
+<script>
+const LEVELS = [
+  { id:1, name:"Fantasy Kingdom", emoji:"🏰", dest:"🏰", desc:"Simple starter words",
+    lessons:[
+      [{w:"Cat",e:"🐱",h:"k·at"},{w:"Dog",e:"🐶",h:"d·og"},{w:"Sun",e:"☀️",h:"s·un"},{w:"Hat",e:"🎩",h:"h·at"},{w:"Cup",e:"☕",h:"c·up"},{w:"Bus",e:"🚌",h:"b·us"},{w:"Bed",e:"🛏️",h:"b·ed"},{w:"Hen",e:"🐔",h:"h·en"},{w:"Map",e:"🗺️",h:"m·ap"},{w:"Nut",e:"🥜",h:"n·ut"}],
+      [{w:"Ant",e:"🐜",h:"a·nt"},{w:"Bat",e:"🦇",h:"b·at"},{w:"Can",e:"🥫",h:"c·an"},{w:"Egg",e:"🥚",h:"e·gg"},{w:"Fan",e:"🌀",h:"f·an"},{w:"Jar",e:"🫙",h:"j·ar"},{w:"Kit",e:"🧰",h:"k·it"},{w:"Mud",e:"🌧️",h:"m·ud"},{w:"Net",e:"🥅",h:"n·et"},{w:"Pen",e:"🖊️",h:"p·en"}],
+      [{w:"Van",e:"🚐",h:"v·an"},{w:"Wax",e:"🕯️",h:"w·ax"},{w:"Zip",e:"🤐",h:"z·ip"},{w:"Fog",e:"🌫️",h:"f·og"},{w:"Gum",e:"🫧",h:"g·um"},{w:"Ice",e:"🧊",h:"i·ce"},{w:"Jet",e:"✈️",h:"j·et"},{w:"Log",e:"🪵",h:"l·og"},{w:"Oak",e:"🌳",h:"o·ak"},{w:"Tin",e:"🥫",h:"t·in"}],
+      [{w:"Ball",e:"⚽",h:"b·all"},{w:"Cake",e:"🎂",h:"c·ake"},{w:"Dark",e:"🌑",h:"d·ark"},{w:"Farm",e:"🌾",h:"f·arm"},{w:"Gold",e:"🥇",h:"g·old"},{w:"Jump",e:"🦘",h:"j·ump"},{w:"Kite",e:"🪁",h:"k·ite"},{w:"Lake",e:"🏞️",h:"l·ake"},{w:"Mine",e:"⛏️",h:"m·ine"},{w:"Note",e:"🎵",h:"n·ote"}],
+      [{w:"Play",e:"🎮",h:"pl·ay"},{w:"Rain",e:"🌧️",h:"r·ain"},{w:"Safe",e:"🔒",h:"s·afe"},{w:"Tale",e:"📖",h:"t·ale"},{w:"Wave",e:"🌊",h:"w·ave"},{w:"Yard",e:"🌿",h:"y·ard"},{w:"Zone",e:"🗺️",h:"z·one"},{w:"Arch",e:"🏛️",h:"a·rch"},{w:"Bolt",e:"⚡",h:"b·olt"},{w:"Clue",e:"🔍",h:"cl·ue"}]
+    ]
+  },
+  { id:2, name:"Tropical Island", emoji:"🌴", dest:"⚓", desc:"Animals & nature words",
+    lessons:[
+      [{w:"Bird",e:"🐦",h:"b·ird"},{w:"Fish",e:"🐟",h:"f·ish"},{w:"Frog",e:"🐸",h:"fr·og"},{w:"Wolf",e:"🐺",h:"w·olf"},{w:"Bear",e:"🐻",h:"b·ear"},{w:"Duck",e:"🦆",h:"d·uck"},{w:"Deer",e:"🦌",h:"d·eer"},{w:"Crab",e:"🦀",h:"cr·ab"},{w:"Lamb",e:"🐑",h:"l·amb"},{w:"Mole",e:"🐾",h:"m·ole"}],
+      [{w:"Leaf",e:"🍃",h:"l·eaf"},{w:"Root",e:"🌱",h:"r·oot"},{w:"Seed",e:"🌱",h:"s·eed"},{w:"Tree",e:"🌳",h:"tr·ee"},{w:"Bark",e:"🪵",h:"b·ark"},{w:"Bush",e:"🌿",h:"b·ush"},{w:"Vine",e:"🍇",h:"v·ine"},{w:"Moss",e:"🌿",h:"m·oss"},{w:"Reed",e:"🎋",h:"r·eed"},{w:"Stem",e:"🌿",h:"st·em"}],
+      [{w:"Shark",e:"🦈",h:"sh·ark"},{w:"Tiger",e:"🐯",h:"ti·ger"},{w:"Eagle",e:"🦅",h:"ea·gle"},{w:"Otter",e:"🦦",h:"ot·ter"},{w:"Panda",e:"🐼",h:"pan·da"},{w:"Koala",e:"🐨",h:"ko·ala"},{w:"Llama",e:"🦙",h:"lla·ma"},{w:"Zebra",e:"🦓",h:"ze·bra"},{w:"Bison",e:"🦬",h:"bi·son"},{w:"Moose",e:"🫎",h:"m·oose"}],
+      [{w:"River",e:"🏞️",h:"ri·ver"},{w:"Ocean",e:"🌊",h:"o·cean"},{w:"Cloud",e:"☁️",h:"cl·oud"},{w:"Storm",e:"⛈️",h:"st·orm"},{w:"Beach",e:"🏖️",h:"b·each"},{w:"Cliff",e:"🏔️",h:"cl·iff"},{w:"Swamp",e:"🌿",h:"sw·amp"},{w:"Grove",e:"🌳",h:"gr·ove"},{w:"Plain",e:"🌾",h:"pl·ain"},{w:"Thorn",e:"🌵",h:"th·orn"}],
+      [{w:"Butterfly",e:"🦋",h:"but·ter·fly"},{w:"Elephant",e:"🐘",h:"el·e·phant"},{w:"Giraffe",e:"🦒",h:"gi·raffe"},{w:"Dolphin",e:"🐬",h:"dol·phin"},{w:"Penguin",e:"🐧",h:"pen·guin"},{w:"Octopus",e:"🐙",h:"oc·to·pus"},{w:"Panther",e:"🐆",h:"pan·ther"},{w:"Sparrow",e:"🐦",h:"spar·row"},{w:"Lobster",e:"🦞",h:"lob·ster"},{w:"Vulture",e:"🦅",h:"vul·ture"}]
+    ]
+  },
+  { id:3, name:"Candy Kingdom", emoji:"🍬", dest:"🍭", desc:"Food & home words",
+    lessons:[
+      [{w:"Apple",e:"🍎",h:"ap·ple"},{w:"Bread",e:"🍞",h:"br·ead"},{w:"Milk",e:"🥛",h:"m·ilk"},{w:"Rice",e:"🍚",h:"r·ice"},{w:"Soup",e:"🍜",h:"s·oup"},{w:"Corn",e:"🌽",h:"c·orn"},{w:"Lime",e:"🍋",h:"l·ime"},{w:"Pear",e:"🍐",h:"p·ear"},{w:"Plum",e:"🍑",h:"pl·um"},{w:"Grape",e:"🍇",h:"gr·ape"}],
+      [{w:"Spoon",e:"🥄",h:"sp·oon"},{w:"Knife",e:"🔪",h:"kn·ife"},{w:"Plate",e:"🍽️",h:"pl·ate"},{w:"Chair",e:"🪑",h:"ch·air"},{w:"Table",e:"🪵",h:"ta·ble"},{w:"Clock",e:"🕐",h:"cl·ock"},{w:"Towel",e:"🧻",h:"tow·el"},{w:"Brush",e:"🪥",h:"br·ush"},{w:"Shelf",e:"📚",h:"sh·elf"},{w:"Stove",e:"🍳",h:"st·ove"}],
+      [{w:"Bedroom",e:"🛏️",h:"bed·room"},{w:"Kitchen",e:"🍳",h:"kitch·en"},{w:"Curtain",e:"🪟",h:"cur·tain"},{w:"Blanket",e:"🛌",h:"blan·ket"},{w:"Lantern",e:"🏮",h:"lan·tern"},{w:"Cabinet",e:"🗄️",h:"cab·i·net"},{w:"Cushion",e:"🛋️",h:"cush·ion"},{w:"Mailbox",e:"📫",h:"mail·box"},{w:"Biscuit",e:"🍪",h:"bis·cuit"},{w:"Chimney",e:"🏠",h:"chim·ney"}],
+      [{w:"Strawberry",e:"🍓",h:"straw·ber·ry"},{w:"Pineapple",e:"🍍",h:"pine·ap·ple"},{w:"Blueberry",e:"🫐",h:"blue·ber·ry"},{w:"Cinnamon",e:"🌿",h:"cin·na·mon"},{w:"Chocolate",e:"🍫",h:"choc·o·late"},{w:"Mushroom",e:"🍄",h:"mush·room"},{w:"Eggplant",e:"🍆",h:"egg·plant"},{w:"Avocado",e:"🥑",h:"av·o·ca·do"},{w:"Broccoli",e:"🥦",h:"broc·co·li"},{w:"Croissant",e:"🥐",h:"crois·sant"}],
+      [{w:"Breakfast",e:"🍳",h:"break·fast"},{w:"Noodles",e:"🍜",h:"noo·dles"},{w:"Pancake",e:"🥞",h:"pan·cake"},{w:"Popcorn",e:"🍿",h:"pop·corn"},{w:"Pretzel",e:"🥨",h:"pret·zel"},{w:"Pudding",e:"🍮",h:"pud·ding"},{w:"Sausage",e:"🌭",h:"sau·sage"},{w:"Waffles",e:"🧇",h:"waf·fles"},{w:"Baguette",e:"🥖",h:"ba·guette"},{w:"Doughnut",e:"🍩",h:"dough·nut"}]
+    ]
+  },
+  { id:4, name:"Enchanted Forest", emoji:"🍄", dest:"🍄", desc:"People & places",
+    lessons:[
+      [{w:"Doctor",e:"👨‍⚕️",h:"doc·tor"},{w:"Nurse",e:"👩‍⚕️",h:"n·urse"},{w:"Teacher",e:"👩‍🏫",h:"teach·er"},{w:"Farmer",e:"👨‍🌾",h:"farm·er"},{w:"Police",e:"👮",h:"po·lice"},{w:"Artist",e:"🧑‍🎨",h:"ar·tist"},{w:"Driver",e:"🚗",h:"driv·er"},{w:"Pilot",e:"✈️",h:"pi·lot"},{w:"Chef",e:"👨‍🍳",h:"ch·ef"},{w:"Vet",e:"🐾",h:"v·et"}],
+      [{w:"Library",e:"📚",h:"li·brar·y"},{w:"Hospital",e:"🏥",h:"hos·pi·tal"},{w:"Airport",e:"✈️",h:"air·port"},{w:"Station",e:"🚉",h:"sta·tion"},{w:"Museum",e:"🏛️",h:"mu·se·um"},{w:"Stadium",e:"🏟️",h:"sta·di·um"},{w:"Theatre",e:"🎭",h:"the·a·tre"},{w:"Bakery",e:"🥐",h:"bak·er·y"},{w:"Factory",e:"🏭",h:"fac·tor·y"},{w:"Harbour",e:"⚓",h:"har·bour"}],
+      [{w:"Community",e:"🤝",h:"com·mu·ni·ty"},{w:"Neighbour",e:"🏘️",h:"neigh·bour"},{w:"Volunteer",e:"🙋",h:"vol·un·teer"},{w:"Classroom",e:"🏫",h:"class·room"},{w:"Playground",e:"🛝",h:"play·ground"},{w:"Firefighter",e:"🚒",h:"fire·fight·er"},{w:"Journalist",e:"📰",h:"jour·nal·ist"},{w:"Carpenter",e:"🪚",h:"car·pen·ter"},{w:"Scientist",e:"🔬",h:"sci·en·tist"},{w:"Architect",e:"📐",h:"ar·chi·tect"}],
+      [{w:"Election",e:"🗳️",h:"e·lec·tion"},{w:"Democracy",e:"🗳️",h:"de·moc·ra·cy"},{w:"Geography",e:"🌍",h:"ge·og·ra·phy"},{w:"Parliament",e:"🏛️",h:"par·lia·ment"},{w:"Revolution",e:"✊",h:"rev·o·lu·tion"},{w:"Ambassador",e:"🤝",h:"am·bas·sa·dor"},{w:"President",e:"🗽",h:"pres·i·dent"},{w:"Archaeology",e:"⛏️",h:"ar·chae·ol·o·gy"},{w:"Philosophy",e:"🤔",h:"phi·los·o·phy"},{w:"Constitution",e:"📜",h:"con·sti·tu·tion"}],
+      [{w:"Collaboration",e:"🤝",h:"col·lab·o·ra·tion"},{w:"Communication",e:"📡",h:"com·mu·ni·ca·tion"},{w:"Responsibility",e:"✅",h:"re·spon·si·bil·i·ty"},{w:"Independence",e:"🏳️",h:"in·de·pen·dence"},{w:"Organization",e:"📋",h:"or·gan·i·za·tion"},{w:"Sustainability",e:"♻️",h:"sus·tain·a·bil·i·ty"},{w:"Determination",e:"💪",h:"de·ter·mi·na·tion"},{w:"Infrastructure",e:"🌉",h:"in·fra·struc·ture"},{w:"Civilization",e:"🏛️",h:"civ·i·li·za·tion"},{w:"Entrepreneur",e:"💼",h:"en·tre·pre·neur"}]
+    ]
+  },
+  { id:5, name:"Space Station", emoji:"🚀", dest:"🚀", desc:"Feelings & stories",
+    lessons:[
+      [{w:"Happy",e:"😊",h:"hap·py"},{w:"Angry",e:"😡",h:"an·gry"},{w:"Scared",e:"😨",h:"sc·ared"},{w:"Proud",e:"🥲",h:"pr·oud"},{w:"Lonely",e:"😔",h:"lone·ly"},{w:"Jealous",e:"😒",h:"jeal·ous"},{w:"Nervous",e:"😬",h:"nerv·ous"},{w:"Curious",e:"🤔",h:"cu·ri·ous"},{w:"Grateful",e:"🙏",h:"grate·ful"},{w:"Cheerful",e:"😄",h:"cheer·ful"}],
+      [{w:"Adventure",e:"🗺️",h:"ad·ven·ture"},{w:"Courage",e:"🦁",h:"cour·age"},{w:"Mystery",e:"🔍",h:"mys·ter·y"},{w:"Journey",e:"🚶",h:"jour·ney"},{w:"Victory",e:"🏆",h:"vic·to·ry"},{w:"Treasure",e:"💎",h:"treas·ure"},{w:"Dragon",e:"🐲",h:"drag·on"},{w:"Kingdom",e:"🏰",h:"king·dom"},{w:"Warrior",e:"⚔️",h:"war·ri·or"},{w:"Wizard",e:"🧙",h:"wiz·ard"}],
+      [{w:"Friendship",e:"🤝",h:"friend·ship"},{w:"Confidence",e:"💪",h:"con·fi·dence"},{w:"Compassion",e:"❤️",h:"com·pas·sion"},{w:"Honesty",e:"🤞",h:"hon·es·ty"},{w:"Patience",e:"⏳",h:"pa·tience"},{w:"Generosity",e:"🎁",h:"gen·er·os·i·ty"},{w:"Kindness",e:"🌸",h:"kind·ness"},{w:"Resilience",e:"🌱",h:"re·sil·ience"},{w:"Imagination",e:"🌈",h:"im·ag·i·na·tion"},{w:"Perseverance",e:"🧗",h:"per·se·ver·ance"}],
+      [{w:"Overwhelmed",e:"😵",h:"o·ver·whelmed"},{w:"Melancholy",e:"😢",h:"mel·an·chol·y"},{w:"Enthusiastic",e:"🤩",h:"en·thu·si·as·tic"},{w:"Apprehensive",e:"😟",h:"ap·pre·hen·sive"},{w:"Bewildered",e:"😵",h:"be·wil·dered"},{w:"Triumphant",e:"🏆",h:"tri·um·phant"},{w:"Sentimental",e:"🥹",h:"sen·ti·men·tal"},{w:"Contemplative",e:"🤔",h:"con·tem·pla·tive"},{w:"Exhilarated",e:"🎉",h:"ex·hil·a·rat·ed"},{w:"Compassionate",e:"🫂",h:"com·pas·sion·ate"}],
+      [{w:"Once upon a time",e:"📖",h:"once up·on a time"},{w:"Brave knight",e:"⚔️",h:"brave knight"},{w:"Dark forest",e:"🌲",h:"dark for·est"},{w:"Magic potion",e:"🧪",h:"mag·ic po·tion"},{w:"Hidden treasure",e:"💎",h:"hid·den treas·ure"},{w:"Far away land",e:"🌍",h:"far a·way land"},{w:"Ancient scroll",e:"📜",h:"an·cient scroll"},{w:"Golden crown",e:"👑",h:"gold·en crown"},{w:"Enchanted castle",e:"🏰",h:"en·chant·ed cas·tle"},{w:"The hero said",e:"🗣️",h:"the he·ro said"}]
+    ]
+  },
+  { id:6, name:"Ice Kingdom", emoji:"❄️", dest:"❄️", desc:"Master class words",
+    lessons:[
+      [{w:"Ambiguous",e:"🤷",h:"am·big·u·ous"},{w:"Eloquent",e:"🗣️",h:"el·o·quent"},{w:"Hypothesis",e:"🔬",h:"hy·poth·e·sis"},{w:"Inevitable",e:"⏳",h:"in·ev·i·ta·ble"},{w:"Magnanimous",e:"🌟",h:"mag·nan·i·mous"},{w:"Quintessential",e:"🏅",h:"quin·tes·sen·tial"},{w:"Sophisticated",e:"🎩",h:"so·phis·ti·cat·ed"},{w:"Unprecedented",e:"📰",h:"un·prec·e·dent·ed"},{w:"Vulnerability",e:"💙",h:"vul·ner·a·bil·i·ty"},{w:"Conscientious",e:"✅",h:"con·sci·en·tious"}],
+      [{w:"Bureaucracy",e:"🏛️",h:"bu·reau·cra·cy"},{w:"Dilemma",e:"🤔",h:"di·lem·ma"},{w:"Ephemeral",e:"🌸",h:"e·phem·er·al"},{w:"Gregarious",e:"🎉",h:"gre·gar·i·ous"},{w:"Idiosyncratic",e:"🦄",h:"id·i·o·syn·crat·ic"},{w:"Juxtaposition",e:"↔️",h:"jux·ta·po·si·tion"},{w:"Metamorphosis",e:"🦋",h:"met·a·mor·pho·sis"},{w:"Nomenclature",e:"🏷️",h:"no·men·cla·ture"},{w:"Omnipotent",e:"⚡",h:"om·nip·o·tent"},{w:"Recalcitrant",e:"😤",h:"re·cal·ci·trant"}],
+      [{w:"Superfluous",e:"🎭",h:"su·per·flu·ous"},{w:"Tenacious",e:"🐾",h:"te·na·cious"},{w:"Ubiquitous",e:"🌐",h:"u·biq·ui·tous"},{w:"Vicissitudes",e:"🎢",h:"vi·cis·si·tudes"},{w:"Labyrinthine",e:"🌀",h:"lab·y·rin·thine"},{w:"Perspicacious",e:"👁️",h:"per·spi·ca·cious"},{w:"Serendipity",e:"🍀",h:"ser·en·dip·i·ty"},{w:"Mellifluous",e:"🎵",h:"mel·lif·lu·ous"},{w:"Ineffable",e:"💫",h:"in·ef·fa·ble"},{w:"Numinous",e:"🌌",h:"nu·mi·nous"}],
+      [{w:"Worcestershire",e:"🌿",h:"woos·ter·sheer"},{w:"Mischievous",e:"😈",h:"mis·chie·vous"},{w:"Particularly",e:"🎯",h:"par·tic·u·lar·ly"},{w:"Pronunciation",e:"🗣️",h:"pro·nun·ci·a·tion"},{w:"Simultaneously",e:"⚡",h:"si·mul·ta·neous·ly"},{w:"Miscellaneous",e:"🗂️",h:"mis·cel·la·ne·ous"},{w:"Extraordinary",e:"✨",h:"ex·traor·di·nar·y"},{w:"Enthusiastically",e:"🎊",h:"en·thu·si·as·tic·al·ly"},{w:"Incomprehensible",e:"❓",h:"in·com·pre·hen·si·ble"},{w:"Consciously",e:"🧠",h:"con·scious·ly"}],
+      [{w:"Petrichor",e:"🌧️",h:"pet·ri·chor"},{w:"Hiraeth",e:"🏡",h:"heer·eyeth"},{w:"Solipsism",e:"🪞",h:"sol·ip·sism"},{w:"Sempiternal",e:"♾️",h:"sem·pi·ter·nal"},{w:"Denouement",e:"🎬",h:"day·noo·moh"},{w:"Sonder",e:"🌍",h:"son·der"},{w:"Lachrymose",e:"😢",h:"lak·ri·mose"},{w:"Soporific",e:"😴",h:"sop·o·rif·ic"},{w:"Loquacious",e:"🗣️",h:"lo·qua·cious"},{w:"Defenestration",e:"🪟",h:"de·fen·es·tra·tion"}]
+    ]
+  }
+];
+
+const DAILY_LIMIT = 5;
+let G = { xp:0, streak:0, character:'boy', unlockedLevels:[1], completedLessons:{}, todayLessons:0, todayXP:0, todayStars:0, todayWords:0 };
+let S = { levelId:1, lessonIdx:0, words:[], wordIdx:0, correct:0, failCount:0, results:[], busy:false };
+let recBusy = false;
+
+function selectChar(c) {
+  G.character = c;
+  document.getElementById('opt-boy').classList.toggle('selected', c==='boy');
+  document.getElementById('opt-girl').classList.toggle('selected', c==='girl');
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function goLevels() {
+  renderGrid();
+  document.getElementById('daily-count').textContent = G.todayLessons + ' / ' + DAILY_LIMIT + ' done';
+  document.getElementById('streak-lbl').textContent = '🔥 ' + G.streak + ' day' + (G.streak!==1?'s':'');
+  showScreen('s-levels');
+}
+
+function renderGrid() {
+  const grid = document.getElementById('level-grid');
+  grid.innerHTML = '';
+  LEVELS.forEach(lv => {
+    const unlocked = G.unlockedLevels.includes(lv.id);
+    const done = numDone(lv.id);
+    const el = document.createElement('div');
+    el.className = 'lv-card' + (unlocked?'':' locked') + (done===lv.lessons.length?' completed':'');
+    el.innerHTML =
+      '<div class="lv-thumb lv-thumb-' + lv.id + '">' +
+        (done===lv.lessons.length ? '<div class="done-badge">✅ Done</div>' : '') +
+        (!unlocked ? '<div class="lock-badge">🔒</div>' : '') +
+        '<div class="lv-emoji">' + lv.emoji + '</div>' +
+      '</div>' +
+      '<div class="lv-info"><h3>' + lv.name + '</h3><p>' + lv.desc + '</p><div class="prog">' + done + '/' + lv.lessons.length + ' lessons</div></div>';
+    if (unlocked) el.onclick = () => pickLesson(lv.id);
+    grid.appendChild(el);
+  });
+}
+
+function numDone(lvId) {
+  return LEVELS.find(l=>l.id===lvId).lessons.filter((_,i)=>G.completedLessons['L'+lvId+'_'+i]).length;
+}
+
+function pickLesson(lvId) {
+  if (G.todayLessons >= DAILY_LIMIT) { showDailyDone(); return; }
+  const lv = LEVELS.find(l=>l.id===lvId);
+  let idx = lv.lessons.findIndex((_,i)=>!G.completedLessons['L'+lvId+'_'+i]);
+  if (idx===-1) idx = lv.lessons.length-1;
+  startLesson(lvId, idx);
+}
+
+function startLesson(lvId, idx) {
+  const lv = LEVELS.find(l=>l.id===lvId);
+  S = { levelId:lvId, lessonIdx:idx, words:[...lv.lessons[idx]], wordIdx:0, correct:0, failCount:0, results:[], busy:false };
+  const map = document.getElementById('game-map');
+  map.className = 'game-map game-map-' + lvId;
+  document.getElementById('map-dest').textContent = lv.dest;
+  document.getElementById('g-level').textContent = lv.emoji + ' ' + lv.name;
+  const walker = document.getElementById('char-walker');
+  walker.className = 'char-walker ' + G.character;
+  showScreen('s-game');
+  renderWord(); updateHUD();
+}
+
+function renderWord() {
+  const w = S.words[S.wordIdx];
+  document.getElementById('word-emoji').textContent = w.e;
+  document.getElementById('word-text').textContent = w.w;
+  document.getElementById('word-hint').textContent = w.h;
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('feedback').className = 'feedback';
+  document.getElementById('result-txt').textContent = '';
+  S.failCount = 0; S.busy = false;
+  setDots(0,false); moveChar();
+  document.getElementById('mic-area').innerHTML = REC
+    ? '<button class="btn-speak" id="btn-speak" onclick="listen()">🎤 Speak</button>'
+    : '<div class="no-mic">🎤 Speech needs Chrome or Edge on desktop.</div>';
+}
+
+function setDots(f,ok) {
+  for(let i=1;i<=3;i++) document.getElementById('dot'+i).className='dot'+(ok&&i===1?' ok':i<=f?' fail':'');
+}
+
+function moveChar() {
+  const pct = S.wordIdx / S.words.length;
+  const mapW = document.getElementById('game-map').offsetWidth || 460;
+  document.getElementById('char-walker').style.left = (30 + pct*(mapW-100)) + 'px';
+}
+
+const SR_API = window.SpeechRecognition || window.webkitSpeechRecognition;
+const REC = SR_API ? new SR_API() : null;
+if (REC) { REC.lang='en-US'; REC.continuous=false; REC.interimResults=false; }
+
+function listen() {
+  if (!REC||recBusy) return;
+  recBusy = true;
+  const btn = document.getElementById('btn-speak');
+  if (btn) { btn.classList.add('listening'); btn.textContent='🔴 Listening…'; btn.disabled=true; }
+  document.getElementById('feedback').textContent = 'Listening… 👂';
+  REC.onresult = REC.onerror = REC.onend = null;
+  REC.onresult = e => {
+    recBusy = false;
+    const spoken = e.results[0][0].transcript.toLowerCase().trim();
+    document.getElementById('result-txt').textContent = 'You said: "' + spoken + '"';
+    resetBtn();
+    levenScore(spoken, S.words[S.wordIdx].w.toLowerCase()) >= 65 ? onSuccess() : onFail();
+  };
+  REC.onerror = () => { recBusy=false; resetBtn(); toast('Mic error — try again'); };
+  REC.onend = () => { recBusy=false; resetBtn(); };
+  try { REC.start(); } catch(e) { recBusy=false; resetBtn(); }
+}
+
+function resetBtn() {
+  const btn = document.getElementById('btn-speak');
+  if (btn) { btn.classList.remove('listening'); btn.textContent='🎤 Speak'; btn.disabled=false; }
+}
+
+function levenScore(a,b) {
+  if (a===b) return 100;
+  if (a.includes(b)||b.includes(a)) return 90;
+  const r=a.length+1, c=b.length+1;
+  const dp=Array.from({length:r},(_,i)=>Array.from({length:c},(_,j)=>i?j?0:i:j));
+  for(let i=1;i<r;i++) for(let j=1;j<c;j++)
+    dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return Math.max(0,Math.round(100-(dp[r-1][c-1]/Math.max(a.length,b.length))*100));
+}
+
+function onSuccess() {
+  if (S.busy) return; S.busy=true;
+  G.xp+=12; S.correct++;
+  S.results.push({w:S.words[S.wordIdx].w, ok:true});
+  setDots(0,true);
+  const msgs=['⭐ Perfect!','🎉 Excellent!','👏 Great job!','💪 Nailed it!','🔥 Superb!','✨ Amazing!'];
+  setFeedback(msgs[Math.floor(Math.random()*msgs.length)], false);
+  updateHUD();
+  setTimeout(()=>{ S.wordIdx++; S.wordIdx>=S.words.length?endLesson():(renderWord(),updateHUD()); }, 900);
+}
+
+function onFail() {
+  S.failCount++;
+  if (S.failCount===1) { setFeedback('😊 Almost! Try again.', true); setDots(1,false); }
+  else if (S.failCount===2) { setFeedback('💡 Try slowly: '+S.words[S.wordIdx].h, true); setDots(2,false); }
+  else {
+    setFeedback('👏 Great effort! Next word.', true); setDots(3,false);
+    S.results.push({w:S.words[S.wordIdx].w, ok:false});
+    setTimeout(()=>{ S.wordIdx++; S.wordIdx>=S.words.length?endLesson():(renderWord(),updateHUD()); }, 900);
+  }
+}
+
+function skipWord() {
+  if (S.busy||recBusy) return;
+  S.results.push({w:S.words[S.wordIdx].w, ok:false});
+  S.wordIdx++; S.wordIdx>=S.words.length?endLesson():(renderWord(),updateHUD());
+}
+
+function endLesson() {
+  const total=S.words.length, pct=S.correct/total;
+  const stars=pct>=.9?3:pct>=.6?2:1;
+  const key='L'+S.levelId+'_'+S.lessonIdx;
+  const isNew=!G.completedLessons[key];
+  G.completedLessons[key]={stars,correct:S.correct};
+  if (isNew) { G.todayLessons++; G.todayXP+=S.correct*12; G.todayWords+=total; G.todayStars+=stars; }
+  const done=numDone(S.levelId);
+  if (done>=3) {
+    const next=S.levelId+1;
+    if (next<=6&&!G.unlockedLevels.includes(next)) { G.unlockedLevels.push(next); setTimeout(()=>toast('🔓 '+LEVELS[next-1].name+' Unlocked!'),600); }
+  }
+  if (isNew&&G.todayLessons>=DAILY_LIMIT) { G.streak++; setTimeout(showDailyDone,500); return; }
+  document.getElementById('stars-big').textContent='⭐'.repeat(stars)+'☆'.repeat(3-stars);
+  document.getElementById('c-correct').textContent=S.correct+'/'+total;
+  document.getElementById('c-xp').textContent='+'+S.correct*12;
+  document.getElementById('c-today').textContent=G.todayLessons+'/'+DAILY_LIMIT;
+  const rev=document.getElementById('review');
+  rev.innerHTML='<h4>Word review</h4>'+S.results.map(r=>'<div class="review-item"><span>'+(r.ok?'✅':'❌')+'</span>'+r.w+'</div>').join('');
+  showScreen('s-complete');
+}
+
+function replayLesson() { startLesson(S.levelId, S.lessonIdx); }
+
+function showDailyDone() {
+  document.getElementById('streak-pill').textContent='🔥 '+G.streak+'-Day Streak!';
+  document.getElementById('dd-words').textContent=G.todayWords;
+  document.getElementById('dd-xp').textContent=G.todayXP;
+  document.getElementById('dd-stars').textContent=G.todayStars;
+  const next=LEVELS.find(l=>G.unlockedLevels.includes(l.id)&&numDone(l.id)<l.lessons.length);
+  document.getElementById('tomorrow-text').textContent=next?'Continue '+next.emoji+' '+next.name:'All worlds complete — aim for perfect scores! 🏆';
+  showScreen('s-done');
+}
+
+function updateHUD() {
+  document.getElementById('g-word').textContent=(S.wordIdx+1)+'/'+S.words.length;
+  document.getElementById('g-xp').textContent='⭐ '+G.xp+' XP';
+  document.getElementById('prog-fill').style.width=(S.wordIdx/S.words.length*100)+'%';
+}
+function setFeedback(msg,wrong) {
+  const el=document.getElementById('feedback'); el.textContent=msg; el.className='feedback'+(wrong?' wrong':'');
+}
+function toast(msg) {
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+</script>
+</body>
+</html>
